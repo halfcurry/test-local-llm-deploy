@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-server
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      # This healthcheck ensures the Ollama server itself is responsive
+      test: ["CMD-SHELL", "ollama list > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s # Increased start_period to give Ollama more time to initialize
+    
+    # Custom entrypoint and command to start ollama serve, pull models, then keep serving
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "
+        # Start the Ollama server in the background as its primary process
+        /usr/bin/ollama serve &
+        OLLAMA_PID=$!
+
+        echo 'Waiting for Ollama server to start inside ollama-server container...'
+        # Wait until the Ollama server is responsive before attempting to pull models.
+        # This prevents 'ollama pull' from failing due to the server not being ready.
+        until /usr/bin/ollama list > /dev/null 2>&1; do
+          echo 'Ollama server not ready yet. Waiting...'
+          sleep 5
+        done
+        echo 'Ollama server is ready. Pulling models...'
+
+        # Pull the required models.
+        # Using full path to ollama ensures robust execution.
+        /usr/bin/ollama pull llama3.2:3b && \
+        /usr/bin/ollama pull phi3:mini
+
+        echo 'Models pulled successfully! Keeping Ollama server running...'
+        # Wait for the background ollama serve process to ensure it remains the main process
+        # and the container stays alive to serve requests.
+        wait $OLLAMA_PID
+      "
+
+  test-app:
+    build: ./test-app
+    container_name: ollama-test-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
