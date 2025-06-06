@@ -1,0 +1,27 @@
+{
+  "name": "Ollama LLM Codespace",
+  "image": "mcr.microsoft.com/devcontainers/universal:2-ubuntu-22.04",
+  "features": {
+    "ghcr.io/prulloac/devcontainer-features/ollama:1": {}
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "forwardPorts": [11434, 8080],
+  "portsAttributes": {
+    "11434": {
+      "label": "Ollama API",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Web UI",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter"
+      ]
+    }
+  }
+}
