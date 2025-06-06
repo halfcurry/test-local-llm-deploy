@@ -59,5 +59,24 @@ services:
       - OLLAMA_URL=http://ollama:11434
     restart: unless-stopped
 
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080" # Map host port 3000 to container port 8080
+    environment:
+      # Connect Open WebUI to the Ollama service using its service name in the Docker network
+      - OLLAMA_BASE_URL=http://ollama:11434
+      # Optional: Disable authentication for easier local testing (set to 'false' or 'true')
+      - WEBUI_AUTH=false
+    volumes:
+      # Persist Open WebUI data (e.g., chat history, settings)
+      - open-webui_data:/app/backend/data
+    depends_on:
+      ollama:
+        condition: service_healthy # Ensure Ollama is healthy before starting WebUI
+    restart: unless-stopped
+
 volumes:
   ollama_data:
+  open-webui_data: # Define the new volume for Open WebUI data
